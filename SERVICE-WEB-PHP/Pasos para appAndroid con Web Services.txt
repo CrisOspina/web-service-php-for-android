@@ -1,0 +1,246 @@
+Para realizar este proceso, primero debe estar el archivo sesion.php que retorne los datos en formato JSON
+
+1. Crear los archivos php que retornan datos en formato JSON
+
+2. Crear app para Login con ActivityMain
+
+2.1. Cambiar el id del layout por ejemplo: escenario
+
+2.2. Crear layout fragment (Blank), por ejemplo 
+
+2.2.1. Crear el dise�o para login (usuario y contrase�a)
+
+2.2.2. Dejar solo el codigo de java que permita hacer solo lo siguiente:(SesionFragment.java)
+	 @Override
+    	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) 
+	{
+        // Inflate the layout for this fragment
+        return inflater.inflate(R.layout.fragment_sesion, container, false);
+    	}
+
+3. En MainActivity.java poner el siguiente c�digo para usar el fragment como layout
+   de inicio, por ejemplo:
+	//Se permite la utilizaci�n del fragment (fragment_sesion)
+        // en el layout con nombre escenario
+        FragmentManager fm = getSupportFragmentManager();
+        fm.beginTransaction().replace(R.id.escenario,new SesionFragment()).commit();
+
+3.1. Ejecutar desde el emulador....
+
+4. Especificar en GradleScripts (module) la siguiente dependencia que permita
+   hacer conexiones http:
+	 implementation 'com.android.volley:volley:1.1.1'
+
+4.1. Hacer clic en Sync now...
+
+5. En el archivo AndroidManifest.xml, especificar la l�nea que permite tomar datos
+   de internet:
+	<uses-permission android:name="android.permission.INTERNET"/>
+
+6.En el archivo fragment (SesionFragment.java) agregar el siguiente codigo implements...
+	public class SesionFragment extends Fragment implements Response.Listener<JSONObject>,Response.ErrorListener{
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
+        return inflater.inflate(R.layout.fragment_sesion, container, false);
+    }
+   ....y se genera 2 m�todos...onResponse y onErrorResponse ...
+
+6.1. Agregar los objetos para la conexi�n... despu�s public class ... por ejemplo,
+
+	public class SesionFragment extends Fragment implements Response.Listener<JSONObject>,Response.ErrorListener{
+    //Definir los objetos que se requieren para la conexi�n
+    RequestQueue rq;
+    JsonRequest jrq;
+    EditText usr,clave;
+    Button iniciar;
+;    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
+        //return inflater.inflate(R.layout.fragment_sesion, container, false);
+        View vista = inflater.inflate(R.layout.fragment_sesion,container,false);
+        usr = vista.findViewById(R.id.etusr);
+        clave = vista.findViewById(R.id.etclave);
+        iniciar = vista.findViewById(R.id.btnsesion);
+        rq = Volley.newRequestQueue(getContext());//requerimiento Volley
+        iniciar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                iniciarsesion();
+            }
+        });
+        return vista;
+
+    }
+
+    @Override
+    public void onResponse(JSONObject response) {
+        Toast.makeText(getContext(),"Se ha encontrado el usuario"+usr.getText().toString(),Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onErrorResponse(VolleyError error) {
+        Toast.makeText(getContext(),"No se ha encontrado el usuario"+usr.getText().toString(),Toast.LENGTH_SHORT).show();
+    }
+    public void iniciarsesion()
+    {
+        String url = "http://ipconfig:puerto/serviciosandroidphp/sesion.php?usr="+usr.getText().toString()+"&clave="+clave.getText().toString();
+        jrq = new JsonObjectRequest(Request.Method.GET,url,null,this,this);
+        rq.add(jrq);
+    }
+}
+6.2. Ejecutar desde el emulador para chequear la validaci�n de los datos ...
+
+6.3. Crear una clase (java usuario.java), para enviar datos a otra actividad para cuando sea valido el usuario
+     clic derecho en java (carpeta proyecto):
+public class usuario {
+    private String usr,clave,nombre,correo;
+
+    public String getCorreo() {
+        return correo;
+    }
+
+    public void setCorreo(String correo) {
+        this.correo = correo;
+    }
+
+    public String getUsr() {
+
+        return usr;
+    }
+
+    public void setUsr(String usr) {
+        this.usr = usr;
+    }
+
+    public String getClave() {
+        return clave;
+    }
+
+    public void setClave(String clave) {
+        this.clave = clave;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+}
+
+6.4.en el evento OnResponse ....
+	public void onResponse(JSONObject response) {
+        //Se utiliza la clase usuario para tomar los campos del arreglo datos del archivo php
+        usuario usua = new usuario();
+        Toast.makeText(getContext(),"Se ha encontrado el usuario "+usr.getText().toString(),Toast.LENGTH_SHORT).show();
+        //datos: arreglo que env�a los datos en formato JSON, en el archivo php
+        JSONArray jsonArray = response.optJSONArray("datos");
+        JSONObject jsonObject = null;
+        try {
+            jsonObject = jsonArray.getJSONObject(0);//posici�n 0 del arreglo....
+            usua.setUsr(jsonObject.optString("usr"));
+            usua.setClave(jsonObject.optString("clave"));
+            usua.setNombre(jsonObject.optString("nombre"));
+            usua.setCorreo(jsonObject.optString("correo"));
+
+        }
+        catch (JSONException e)
+        {
+            e.printStackTrace();
+        }
+        //Intent misesion = new Intent(getContext(),Main2Activity.class);
+        //misesion.putExtra("musr",usr.getText().toString());
+        //startActivity(misesion);
+        Intent intencion = new Intent(getContext(),Main2Activity.class);
+        intencion.putExtra(Main2Activity.nombre,usua.getNombre());
+        startActivity(intencion);
+
+    }
+
+7. En la actividad que recibe el dato (Main2Activity.java), poner el siguiente c�digo:
+	public class Main2Activity extends AppCompatActivity {
+    public static final String nombre="nombre";
+    TextView rusuario;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main2);
+        rusuario = findViewById(R.id.tvusuario);
+        /*Bundle parametros = this.getIntent().getExtras();
+        if(parametros !=null){
+            String musuario = parametros.getString("musr");
+            rusuario.setText(rusuario.getText().toString()+" "+musuario);
+        }*/
+        String mnombre = getIntent().getStringExtra("nombre");
+        rusuario.setText(rusuario.getText().toString()+" "+mnombre);
+
+    }
+}
+
+7.1. Ejecutar desde el emulador ... y verificar que se conecta y recupera el nombre del usuario
+
+8. Crear actividad para el registro ...
+8.1. El siguiente codigo debe ir en Registro.java, por ejemplo:
+
+	public class Registro extends AppCompatActivity {
+
+    EditText usr,nombre,correo,pass;
+    Button registro;
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_registro);
+
+        usr=findViewById(R.id.etusr);
+        nombre=findViewById(R.id.etnom);
+        correo=findViewById(R.id.etcorreo);
+        pass=findViewById(R.id.etclave);
+        registro=findViewById(R.id.btnregis);
+
+        registro.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Registraruser("http://172.16.16.3:8081/servicioswebandroidphp/registro.php");
+                }
+        });
+    }
+
+    private void Registraruser(String URL){
+        StringRequest stringRequest=new StringRequest(Request.Method.POST, URL, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response)
+            {
+                Toast.makeText(getApplicationContext(), "Registro Exitoso", Toast.LENGTH_SHORT).show();
+            }
+        }, new Response.ErrorListener()
+        {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(getApplicationContext(),error.toString(),Toast.LENGTH_SHORT).show();
+            }
+        })
+        {
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String,String> parametros=new HashMap<String, String>();
+                parametros.put("usr",usr.getText().toString());
+                parametros.put("clave",pass.getText().toString());
+                parametros.put("nombre",nombre.getText().toString());
+                parametros.put("correo",correo.getText().toString());
+                return parametros;
+            }
+        };
+        RequestQueue requestQueue= Volley.newRequestQueue(this);
+        requestQueue.add(stringRequest);
+    }
+}
+
+
